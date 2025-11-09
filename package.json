@@ -1,0 +1,20 @@
+{
+  "name": "ai-text-generator-netlify",
+  "version": "1.0.0",
+  "description": "A simple AI text generator using Netlify Functions and Gemini API.",
+  "main": "netlify/functions/gemini-proxy.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "netlify",
+    "gemini",
+    "ai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^2.6.7" 
+    // Mampiasa version efa tranainy kely (2.x) mba hifanaraka amin'ny tontolo Netlify Function.
+  }
+}

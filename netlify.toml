@@ -1,0 +1,13 @@
+[build]
+  # Tsy mila build command satria HTML sy JS tsotra. Avelao ho banga.
+  # Na azonao apetraka hoe:
+  # command = "npm install"
+
+  # Ny lahatahiry misy ny rakitra haseho (index.html no ao anatin'ity)
+  publish = "/" 
+
+[functions]
+  # Mampahafantatra an'i Netlify hoe aiza no misy ny rakitra Function.
+  directory = "netlify/functions"
+  # Ny runtime ampiasaina, ny Node.js no ampiasain'i Netlify matetika.
+  node_bundler = "esbuild"
