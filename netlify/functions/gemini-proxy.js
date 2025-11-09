@@ -1,71 +1,67 @@
-const fetch = require('node-fetch');
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-// Ny anarana ho an'ny Gemini API Key ao amin'ny Netlify Environment Variables
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+exports.handler = async (event, context) => {
+  // CORS - Mba hahafahan'ny browse miteny amin'ny function
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*', // Azo ovaina ho adiresy anao ihany amin'ny production
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
 
-exports.handler = async (event) => {
-    // Hamarino raha POST request izy ary misy body
-    if (event.httpMethod !== 'POST' || !event.body) {
-        return {
-            statusCode: 405,
-            body: JSON.stringify({ error: 'Method Not Allowed' }),
-        };
+  // Manome valiny ho an'ny OPTIONS (preflight request)
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+  }
+
+  try {
+    const { prompt, systemInstruction } = JSON.parse(event.body);
+
+    if (!prompt) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Prompt is required' }) };
     }
 
-    // Hamarino raha misy ny API Key
-    if (!GEMINI_API_KEY) {
-        console.error("GEMINI_API_KEY not set in Netlify environment variables.");
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Server configuration error: API Key is missing.' }),
-        };
+    // Jerena raha misy ny API Key
+    if (!process.env.GOOGLE_API_KEY) {
+      console.error('Tsy misy ny GOOGLE_API_KEY');
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'API Key tsy voafetra' }) };
     }
 
-    try {
-        const { prompt, systemInstruction } = JSON.parse(event.body);
+    // Vita ny fangatahana ho an'ny Gemini API
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }],
+      tools: [{ googleSearchRetrieval: {} }], // Mampiasa Google Search (grounding)
+    };
 
-        if (!prompt) {
-            return { statusCode: 400, body: JSON.stringify({ error: 'Prompt is required.' }) };
-        }
-
-        const apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
-
-        // Amboary ny payload ho an'ny Gemini API
-        const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            // Mampiasa Google Search ho an'ny fanamarinam-baovao
-            tools: [{ "google_search": {} }],
-            // Ampidiro ny toromarika manokana raha misy
-            ...(systemInstruction && { 
-                systemInstruction: { parts: [{ text: systemInstruction }] }
-            }),
-        };
-
-        // Manao antso mankany amin'ny Gemini API
-        const geminiResponse = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                // Ampiasaina eto ny API Key avy amin'ny Netlify Environment Variable
-                'X-Goog-Api-Key': GEMINI_API_KEY, 
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const geminiResult = await geminiResponse.json();
-        
-        // Averina ho an'ny Front-end ny valiny rehetra avy amin'ny Gemini
-        return {
-            statusCode: geminiResponse.status,
-            body: JSON.stringify(geminiResult),
-        };
-
-    } catch (error) {
-        console.error('Error in Netlify Function:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Internal Server Error during API call.', details: error.message }),
-        };
+    if (systemInstruction) {
+      payload.systemInstruction = { parts: [{ text: systemInstruction }] };
     }
 
+    const response = await fetch(`${API_URL}?key=${process.env.GOOGLE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('Gemini API error:', errorData);
+      return {
+        statusCode: response.status,
+        headers,
+        body: JSON.stringify({ error: `Gemini API error: ${response.statusText}`, details: errorData }),
+      };
+    }
+
+    const data = await response.json();
+    return { statusCode: 200, headers, body: JSON.stringify(data) };
+
+  } catch (error) {
+    console.error('Function error:', error);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Internal Server Error', message: error.message }) };
+  }
 };
